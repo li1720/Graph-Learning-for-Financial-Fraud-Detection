@@ -334,6 +334,7 @@ class NodeFormer(nn.Module):
         self.use_act = use_act
         self.use_jk = use_jk
         self.use_edge_loss = use_edge_loss
+        self.cls_activation = F.sigmoid
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -373,7 +374,6 @@ class NodeFormer(nn.Module):
             z = torch.cat(layer_, dim=-1)
 
         x_out = self.fcs[-1](z).squeeze(0)
-
         if self.use_edge_loss:
             return x_out, link_loss_
         else:

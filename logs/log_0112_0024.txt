@@ -1,0 +1,10 @@
+Epoch: 00, Loss: 46.1858, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 10.25%, Valid rocauc: 10.30%, Test rocauc: 10.18%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 01, Loss: 28.3557, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 14.38%, Valid rocauc: 14.50%, Test rocauc: 14.12%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 02, Loss: 21.3736, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 24.13%, Valid rocauc: 24.15%, Test rocauc: 23.72%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 03, Loss: 18.6175, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 41.57%, Valid rocauc: 41.15%, Test rocauc: 41.38%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 04, Loss: 17.4678, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 63.82%, Valid rocauc: 63.29%, Test rocauc: 64.21%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 05, Loss: 16.9584, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 81.61%, Valid rocauc: 81.22%, Test rocauc: 82.00%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 06, Loss: 16.7137, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 89.84%, Valid rocauc: 89.58%, Test rocauc: 89.86%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 07, Loss: 16.5748, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 92.12%, Valid rocauc: 91.96%, Test rocauc: 92.03%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 08, Loss: 16.4693, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 92.55%, Valid rocauc: 92.42%, Test rocauc: 92.50%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%
+Epoch: 09, Loss: 16.3625, Train acc: 95.91%, Valid acc: 95.67%, Test acc: 95.80%, Train rocauc: 92.61%, Valid rocauc: 92.49%, Test rocauc: 92.57%, Train recall: 0.00%, Valid recall: 0.00%, Test recall: 0.00%

@@ -2,20 +2,22 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import recall_score
 
 def eval_f1(y_true, y_pred):
-    acc_list = []
+    # acc_list = []
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.argmax(dim=-1, keepdim=True).detach().cpu().numpy()
 
-    for i in range(y_true.shape[1]):
-        f1 = f1_score(y_true, y_pred, average='micro')
-        acc_list.append(f1)
+    f1 = f1_score(y_true, y_pred, average='binary')
 
-    return sum(acc_list) / len(acc_list)
+    return f1
 
 
 def eval_acc(y_true, y_pred):
+    np.set_printoptions(threshold=np.inf)
+    # print(y_pred)
+    # print(y_true)
     acc_list = []
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.argmax(dim=-1, keepdim=True).detach().cpu().numpy()
@@ -39,6 +41,7 @@ def eval_rocauc(y_true, y_pred):
     else:
         y_pred = y_pred.detach().cpu().numpy()
 
+
     for i in range(y_true.shape[1]):
         # AUC is only defined when there is at least one positive data.
         if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == 0) > 0:
@@ -53,21 +56,32 @@ def eval_rocauc(y_true, y_pred):
 
     return sum(rocauc_list) / len(rocauc_list)
 
+def eval_recall(y_true, y_pred):
+    
+    y_true = y_true.detach().cpu().numpy()
+    y_pred = y_pred.argmax(dim=-1, keepdim=True).detach().cpu().numpy()
+    
+    y_pred_binary = (y_pred > 0.5).astype(int) 
+    recall = recall_score(y_true, y_pred_binary)
+
+    return recall
 
 @torch.no_grad()
 def evaluate(model, dataset, split_idx, eval_func, criterion, args):
     model.eval()
     if args.method == 'nodeformer':
         out, _ = model(dataset.graph['node_feat'], dataset.graph['adjs'], args.tau)
+        out = F.softmax(out)
     else:
         out = model(dataset)
-
+    
     train_acc = eval_func(
         dataset.label[split_idx['train']], out[split_idx['train']])
     valid_acc = eval_func(
         dataset.label[split_idx['valid']], out[split_idx['valid']])
     test_acc = eval_func(
         dataset.label[split_idx['test']], out[split_idx['test']])
+
 
     if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
         if dataset.label.shape[1] == 1:
@@ -77,10 +91,12 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, args):
         valid_loss = criterion(out[split_idx['valid']], true_label.squeeze(1)[
             split_idx['valid']].to(torch.float))
     else:
-        out = F.log_softmax(out, dim=1)
+        # out = F.log_softmax(out, dim=1)
+        # valid_loss = criterion(
+        #     out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
+        out = F.softmax(out)
         valid_loss = criterion(
-            out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
-
+            out[split_idx['valid']][:,1], dataset.label.squeeze(1)[split_idx['valid']].float())
     return train_acc, valid_acc, test_acc, valid_loss, out
 
 

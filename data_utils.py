@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-
+from sklearn.model_selection import train_test_split
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -35,6 +35,37 @@ def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=Tr
 
     return train_idx, valid_idx, test_idx
 
+def stratified_split(labels, train_ratio=0.6, val_ratio=0.2, random_state=None):
+    """
+    按标签比例划分数据集
+
+    参数：
+    - labels: 数据集的标签 (numpy 数组或 list)
+    - train_ratio: 训练集比例
+    - val_ratio: 验证集比例
+    - random_state: 随机种子
+
+    返回：
+    - train_mask, val_mask, test_mask
+    """
+    indices = np.arange(len(labels))
+    train_idx, temp_idx, _, temp_labels = train_test_split(
+        indices, labels, stratify=labels, test_size=1-train_ratio, random_state=random_state
+    )
+    
+    val_idx, test_idx = train_test_split(
+        temp_idx, stratify=temp_labels, test_size=(1-train_ratio-val_ratio)/(1-train_ratio), random_state=random_state
+    )
+
+    train_mask = torch.zeros(len(labels), dtype=torch.bool)
+    val_mask = torch.zeros(len(labels), dtype=torch.bool)
+    test_mask = torch.zeros(len(labels), dtype=torch.bool)
+
+    train_mask[train_idx] = True
+    val_mask[val_idx] = True
+    test_mask[test_idx] = True
+
+    return train_mask, val_mask, test_mask
 
 def load_fixed_splits(data_dir, dataset, name, protocol):
     splits_lst = []
@@ -45,13 +76,21 @@ def load_fixed_splits(data_dir, dataset, name, protocol):
         splits['test'] = torch.as_tensor(dataset.test_idx)
         splits_lst.append(splits)
     elif name in ['cora', 'citeseer', 'pubmed', 'chameleon', 'squirrel', 'film', 'cornell', 'texas', 'wisconsin']:
-        for i in range(10):
-            splits_file_path = '{}/geom-gcn/splits/{}'.format(data_dir, name) + '_split_0.6_0.2_' + str(i) + '.npz'
-            splits = {}
-            with np.load(splits_file_path) as splits_file:
-                splits['train'] = torch.BoolTensor(splits_file['train_mask'])
-                splits['valid'] = torch.BoolTensor(splits_file['val_mask'])
-                splits['test'] = torch.BoolTensor(splits_file['test_mask'])
+        labels = dataset.label.squeeze().cpu().numpy()
+        for i in range(10):   # 进行交叉验证
+            # splits_file_path = '{}/geom-gcn/splits/{}'.format(data_dir, name) + '_split_0.6_0.2_' + str(i) + '.npz'
+            # splits = {}
+            # with np.load(splits_file_path) as splits_file:
+            #     splits['train'] = torch.BoolTensor(splits_file['train_mask'])
+            #     splits['valid'] = torch.BoolTensor(splits_file['val_mask'])
+            #     splits['test'] = torch.BoolTensor(splits_file['test_mask'])
+            # splits_lst.append(splits)
+            train_mask, val_mask, test_mask = stratified_split(labels, train_ratio=0.6, val_ratio=0.2, random_state=i)
+            splits = {
+                'train': train_mask,
+                'valid': val_mask,
+                'test': test_mask
+            }
             splits_lst.append(splits)
     else:
         raise NotImplementedError

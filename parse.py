@@ -72,10 +72,10 @@ def parser_add_main_args(parser):
     parser.add_argument('--method', '-m', type=str, default='nodeformer')
     parser.add_argument('--dataset', type=str, default='cora')
     parser.add_argument('--sub_dataset', type=str, default='')
-    parser.add_argument('--data_dir', type=str, default='../data/')
+    parser.add_argument('--data_dir', type=str, default='data/')
     parser.add_argument('--device', type=int, default=0,
                         help='which gpu to use if any (default: 0)')
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=30)
     parser.add_argument('--epochs', type=int, default=500)
     parser.add_argument('--eval_step', type=int,
                         default=1, help='how often to print')

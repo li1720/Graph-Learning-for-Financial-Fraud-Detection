@@ -1,7 +1,7 @@
 # node classification on small datasets
 python main.py --dataset cora --rand_split --metric acc --method nodeformer --lr 0.001 \
 --weight_decay 5e-3 --num_layers 2 --hidden_channels 32 --num_heads 4 --rb_order 2 --rb_trans sigmoid \
---lamda 1.0 --M 30 --K 10 --use_bn --use_residual --use_gumbel --runs 5 --epochs 1000 --device 3
+--lamda 1.0 --M 30 --K 10 --use_bn --use_residual --use_gumbel --runs 5 --epochs 500 --device 3
 
 python main.py --dataset citeseer --rand_split --metric acc --method nodeformer --lr 0.001 \
 --weight_decay 5e-3 --num_layers 2 --hidden_channels 32 --num_heads 2 --rb_order 2 --rb_trans sigmoid \
@@ -14,6 +14,8 @@ python main.py --dataset deezer-europe --rand_split --metric rocauc --method nod
 python main.py --dataset film --rand_split --metric acc --method nodeformer --lr 0.0001 \
 --weight_decay 5e-2 --num_layers 2 --num_heads 1 --rb_order 2 --rb_trans sigmoid --lamda 0.01 \
 --M 30 --K 10 --use_bn --use_residual --use_gumbel --runs 5 --epochs 1000 --device 0
+
+python main.py --dataset film --rand_split --metric acc --method nodeformer --lr 0.001 --weight_decay 5e-2 --num_layers 2 --num_heads 1 --rb_order 2 --rb_trans sigmoid --lamda 0.01 --M 30 --K 10 --use_bn --use_residual --use_gumbel --runs 1 --epochs 100 --device 0
 
 
 # node classification on large datasets

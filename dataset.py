@@ -7,6 +7,7 @@ import scipy
 import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
+import feature_maker
 
 from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
 
@@ -494,14 +495,28 @@ def load_geom_gcn_dataset(data_dir, name):
     if name == 'film':
         with open(graph_node_features_and_labels_file_path) as graph_node_features_and_labels_file:
             graph_node_features_and_labels_file.readline()
+            data = {
+                "id": [],
+                "Feature_Blank": [],
+                "label": []
+                }
             for line in graph_node_features_and_labels_file:
                 line = line.rstrip().split('\t')
                 assert (len(line) == 3)
-                assert (int(line[0]) not in graph_node_features_dict and int(line[0]) not in graph_labels_dict)
-                feature_blank = np.zeros(932, dtype=np.uint8)
-                feature_blank[np.array(line[1].split(','), dtype=np.uint16)] = 1
-                graph_node_features_dict[int(line[0])] = feature_blank
-                graph_labels_dict[int(line[0])] = int(line[2])
+                if int(line[0]) not in graph_node_features_dict and int(line[0]) not in graph_labels_dict:
+                    assert (int(line[0]) not in graph_node_features_dict and int(line[0]) not in graph_labels_dict)
+                    feature_blank = feature_maker.build(line[1])
+                    # feature_blank = np.zeros(932, dtype=np.uint8) # ？
+                    # feature_blank[np.array([int(float(i)) for i in line[1].split(',')], dtype=np.uint16)] = 1
+                    graph_node_features_dict[int(line[0])] = feature_blank
+                    graph_labels_dict[int(line[0])] = int(line[2])
+                    # 将数据添加到列表
+                    data["id"].append(int(line[0]))
+                    data["Feature_Blank"].append(feature_blank)
+                    data["label"].append(int(line[2]))
+            df = pd.DataFrame(data)
+            output_file = "/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/0-1feature.xlsx"
+            df.to_excel(output_file, index=False)        
     else:
         with open(graph_node_features_and_labels_file_path) as graph_node_features_and_labels_file:
             graph_node_features_and_labels_file.readline()
@@ -512,11 +527,18 @@ def load_geom_gcn_dataset(data_dir, name):
                 graph_node_features_dict[int(line[0])] = np.array(line[1].split(','), dtype=np.uint8)
                 graph_labels_dict[int(line[0])] = int(line[2])
 
-    with open(graph_adjacency_list_file_path) as graph_adjacency_list_file:
+    with open(graph_adjacency_list_file_path) as graph_adjacency_list_file: 
         graph_adjacency_list_file.readline()
         for line in graph_adjacency_list_file:
             line = line.rstrip().split('\t')
             assert (len(line) == 2)
+            """
+            node_id = line[0]
+            features = graph_node_features_dict.get(node_id, None)
+            # 如果找不到该节点的特征，可以跳过或采取其他默认值
+            if features is None:
+                continue  # 跳过该节点
+            """
             if int(line[0]) not in G:
                 G.add_node(int(line[0]), features=graph_node_features_dict[int(line[0])],
                            label=graph_labels_dict[int(line[0])])
@@ -531,6 +553,9 @@ def load_geom_gcn_dataset(data_dir, name):
     adj = adj.tocoo().astype(np.float32)
     features = np.array(
         [features for _, features in sorted(G.nodes(data='features'), key=lambda x: x[0])])
+    # np.set_printoptions(threshold=np.inf)
+    features = np.array([list(s) for s in features], dtype=int)
+    # print(features)
     labels = np.array(
         [label for _, label in sorted(G.nodes(data='label'), key=lambda x: x[0])])
 
@@ -538,6 +563,9 @@ def load_geom_gcn_dataset(data_dir, name):
         """Row-normalize feature matrix and convert to tuple representation"""
         rowsum = np.array(feat.sum(1))
         rowsum = (rowsum == 0) * 1 + rowsum
+        # np.set_printoptions(threshold=np.inf)
+        # print(rowsum)
+        rowsum = np.array(rowsum, dtype=float)
         r_inv = np.power(rowsum, -1).flatten()
         r_inv[np.isinf(r_inv)] = 0.
         r_mat_inv = sp.diags(r_inv)
@@ -594,7 +622,7 @@ def load_20news(data_dir, n_remove=0):
     from sklearn.feature_extraction.text import TfidfTransformer
     import pickle as pkl
 
-    if path.exists(data_dir + '20news/20news.pkl'):
+    if os.path.exists(data_dir + '20news/20news.pkl'):
         data = pkl.load(open(data_dir + '20news/20news.pkl', 'rb'))
     else:
         categories = ['alt.atheism',
