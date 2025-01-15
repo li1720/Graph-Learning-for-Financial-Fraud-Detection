@@ -485,8 +485,11 @@ def load_coauthor_dataset(data_dir, name):
 
 
 def load_geom_gcn_dataset(data_dir, name):
-    graph_adjacency_list_file_path = f'{data_dir}geom-gcn/{name}/out1_graph_edges.txt'
-    graph_node_features_and_labels_file_path = f'{data_dir}geom-gcn/{name}/out1_node_feature_label.txt'
+    # graph_adjacency_list_file_path = f'{data_dir}geom-gcn/{name}/out1_graph_edges.txt'
+    # graph_node_features_and_labels_file_path = f'{data_dir}geom-gcn/{name}/out1_node_feature_label.txt'
+
+    graph_adjacency_list_file_path = f'{data_dir}geom-gcn/{name}/out1_graph_edges_balance.txt'
+    graph_node_features_and_labels_file_path = f'{data_dir}geom-gcn/{name}/out1_node_feature_label_balance.txt'
 
     G = nx.DiGraph()
     graph_node_features_dict = {}
@@ -514,9 +517,9 @@ def load_geom_gcn_dataset(data_dir, name):
                     data["id"].append(int(line[0]))
                     data["Feature_Blank"].append(feature_blank)
                     data["label"].append(int(line[2]))
-            df = pd.DataFrame(data)
-            output_file = "/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/0-1feature.xlsx"
-            df.to_excel(output_file, index=False)        
+            # df = pd.DataFrame(data)
+            # output_file = "/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/0-1feature.xlsx"
+            # df.to_excel(output_file, index=False)        
     else:
         with open(graph_node_features_and_labels_file_path) as graph_node_features_and_labels_file:
             graph_node_features_and_labels_file.readline()

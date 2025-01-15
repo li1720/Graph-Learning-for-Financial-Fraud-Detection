@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Step 1: 读取日志文件内容
-log_file = '/Users/liyiman/coding/NodeFormer/logs/log_0114_2324.txt'  # 请确保文件路径正确
+log_file = '/Users/liyiman/coding/NodeFormer/logs/log_0115_2155.txt'  # 请确保文件路径正确
 epochs = []
 losses = []
 train_acc = []
@@ -91,4 +91,4 @@ axes[1, 1].grid(True)
 plt.tight_layout()
 
 # 显示图形
-plt.savefig(f'figs/test1.jpg')
+plt.savefig(f'figs/test.jpg')

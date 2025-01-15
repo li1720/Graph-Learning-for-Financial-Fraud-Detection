@@ -235,4 +235,3 @@ with open(f'logs/log_{timestamp}.txt', 'w') as f:
 #     write_obj.write(f"{args.method}," +
 #                     f"{best_val.mean():.3f} ± {best_val.std():.3f}," +
 #                     f"{best_test.mean():.3f} ± {best_test.std():.3f}\n")
-# 啦啦啦

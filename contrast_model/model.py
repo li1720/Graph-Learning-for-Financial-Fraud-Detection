@@ -12,10 +12,29 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 import numpy as np
+import torch.nn.functional as F
+from torch_geometric.data import Data
+from torch_geometric.nn import GCNConv
+from data_make import remap_node_ids
+
 
 input_file = "/Users/liyiman/coding/NodeFormer/data/fraud/contrast_特征表.xlsx"
 df = pd.read_excel(input_file)
+# # 文件路径[正负类平衡+不含未上市公司]
+# EDGE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_graph_edges_balance.txt'  # 边关系文件
+# NODE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_node_feature_label_balance.txt'  # 节点特征和标签文件
+# UPDATED_EDGE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_graph_edges_balance_index.txt'
+# UPDATED_NODE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_node_feature_label_balance_index.txt'
 
+# # 文件路径[不平衡]
+# EDGE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_graph_edges.txt'  # 边关系文件
+# NODE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_node_feature_label.txt'  # 节点特征和标签文件
+
+# 文件路径[正负类平衡+包含未上市公司]
+EDGE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_graph_edges_balance_non.txt'  # 边关系文件
+NODE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_node_feature_label_balance_non.txt'  # 节点特征和标签文件
+UPDATED_EDGE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_graph_edges_balance_non_index.txt'  # 边关系文件
+UPDATED_NODE_FILE = '/Users/liyiman/coding/NodeFormer/data/geom-gcn/film/out1_node_feature_label_balance_non_index.txt'  # 节点特征和标签文件
 """机器学习"""
 
 def logistic_regression_classification(df):
@@ -67,7 +86,6 @@ def logistic_regression_classification(df):
     # plt.legend(loc="best")
     # plt.show()
 
-
 def random_forest_classification(df):
     """
     Perform random forest classification on the input DataFrame.
@@ -115,7 +133,6 @@ def random_forest_classification(df):
     # plt.title("Receiver Operating Characteristic")
     # plt.legend(loc="best")
     # plt.show()
-
 
 def svm_classification(df):
     """
@@ -165,7 +182,6 @@ def svm_classification(df):
     # plt.legend(loc="best")
     # plt.show()
 
-
 def xgboost_classification(df):
     """
     Perform XGBoost classification on the input DataFrame.
@@ -213,13 +229,6 @@ def xgboost_classification(df):
     # plt.title("Receiver Operating Characteristic")
     # plt.legend(loc="best")
     # plt.show()
-
-
-logistic_regression_classification(df)
-random_forest_classification(df)
-svm_classification(df)
-xgboost_classification(df)
-
 
 """深度学习"""
 def ann_classification(df):
@@ -349,4 +358,142 @@ def ann_classification(df):
     # plt.legend(loc="best")
     # plt.show()
 
-ann_classification(df)
+"""GNN"""
+def gnn_classification(EDGE_FILE, NODE_FILE):
+    # 读取边数据
+    def load_edges(file_path):
+        edge_index = []
+        with open(file_path, 'r') as f:
+            next(f)  # 跳过标题行
+            for line in f:
+                node1, node2 = map(int, line.strip().split())  # 假设以空格分隔
+                edge_index.append([node1, node2])
+        return torch.tensor(edge_index, dtype=torch.long).t()  # 转置为 [2, num_edges]
+
+    # 读取节点数据
+    def load_nodes(file_path):
+        node_features = []
+        labels = []
+        with open(file_path, 'r') as f:
+            next(f)  # 跳过标题行
+            for line in f:
+                parts = line.strip().split()
+                node_features.append(list(map(float, parts[1].split(','))))  # 特征以逗号分隔
+                labels.append(int(parts[2]))  # 标签为整数
+        return torch.tensor(node_features, dtype=torch.float), torch.tensor(labels, dtype=torch.long)
+
+    # 加载数据
+    edge_index = load_edges(EDGE_FILE)
+    node_features, labels = load_nodes(NODE_FILE)
+
+    # 构造训练、验证、测试掩码（随机划分）
+    num_nodes = node_features.size(0)
+    train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+
+    train_ratio, val_ratio = 0.6, 0.2
+    unique_labels = labels.unique()  # 获取所有唯一标签
+
+    for label in unique_labels:
+        label_indices = (labels == label).nonzero(as_tuple=True)[0]  # 获取该标签的所有节点索引
+        num_label_nodes = label_indices.size(0)
+        num_train = int(num_label_nodes * train_ratio)
+        num_val = int(num_label_nodes * val_ratio)
+
+        perm = torch.randperm(num_label_nodes)  # 打乱顺序
+
+        train_mask[label_indices[perm[:num_train]]] = True
+        val_mask[label_indices[perm[num_train:num_train + num_val]]] = True
+        test_mask[label_indices[perm[num_train + num_val:]]] = True
+
+    # 构造图数据对象
+    data = Data(x=node_features, edge_index=edge_index, y=labels, 
+                train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
+
+    # 定义GNN模型
+    class GCN(torch.nn.Module):
+        def __init__(self, in_channels, hidden_channels, out_channels):
+            super(GCN, self).__init__()
+            self.conv1 = GCNConv(in_channels, hidden_channels)  # 第一层卷积
+            self.conv2 = GCNConv(hidden_channels, out_channels)  # 第二层卷积
+
+        def forward(self, data):
+            x, edge_index = data.x, data.edge_index
+            x = self.conv1(x, edge_index)  # 第一层卷积
+            x = F.relu(x)  # 激活函数
+            x = F.dropout(x, p=0.5, training=self.training)  # Dropout以防止过拟合
+            x = self.conv2(x, edge_index)  # 第二层卷积
+            return F.log_softmax(x, dim=1)  # 输出类别的对数概率
+
+    # 参数设置
+    in_channels = node_features.size(1)  # 动态获取特征维度
+    hidden_channels = 64  # 隐藏层维度
+    out_channels = 2  # 类别数量
+
+    # 初始化模型
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = GCN(in_channels, hidden_channels, out_channels).to(device)
+    data = data.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
+
+    # 模型训练
+    def train():
+        model.train()
+        optimizer.zero_grad()
+        out = model(data)  # 前向传播
+        loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])  # 计算损失
+        loss.backward()  # 反向传播
+        optimizer.step()  # 优化模型
+        return loss.item()
+
+    # 模型评估
+    def test():
+        model.eval()
+        with torch.no_grad():
+            out = model(data)
+            pred = out.argmax(dim=1)  # 获取预测类别
+            probs = out.softmax(dim=1)[:, 1].cpu().numpy()  # 获取正类的概率
+            accs = []
+            rocs = []
+            recalls = []
+            for mask in [data.train_mask, data.val_mask, data.test_mask]:  # 训练、验证、测试集
+                true_labels = data.y[mask].cpu().numpy()
+                pred_labels = pred[mask].cpu().numpy()
+                probs_masked = probs[mask.cpu().numpy()]
+
+                acc = (pred_labels == true_labels).sum() / len(true_labels)
+                roc = roc_auc_score(true_labels, probs_masked) if len(set(true_labels)) > 1 else float('nan')
+                recall = recall_score(true_labels, pred_labels, zero_division=0)
+
+                accs.append(acc)
+                rocs.append(roc)
+                recalls.append(recall)
+
+            return accs, rocs, recalls
+
+    # 训练与测试
+    for epoch in range(100):
+        loss = train()
+        accs, rocs, recalls = test()  # 获取三个列表
+
+        # 按顺序解包列表中的值
+        train_acc, val_acc, test_acc = accs
+        train_roc, val_roc, test_roc = rocs
+        train_recall, val_recall, test_recall = recalls
+
+        if epoch % 10 == 0:
+            print(f'Epoch {epoch:03d}, Loss: {loss:.4f}, Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}, '
+                f'Test Acc: {test_acc:.4f}, Train ROC: {train_roc:.4f}, Val ROC: {val_roc:.4f}, Test ROC: {test_roc:.4f}, '
+                f'Train Recall: {train_recall:.4f}, Val Recall: {val_recall:.4f}, Test Recall: {test_recall:.4f}')
+        # print(f'Epoch {epoch:03d}, Loss: {loss:.4f}, Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}, '
+        #     f'Test Acc: {test_acc:.4f}, Train ROC: {train_roc:.4f}, Val ROC: {val_roc:.4f}, Test ROC: {test_roc:.4f}, '
+        #     f'Train Recall: {train_recall:.4f}, Val Recall: {val_recall:.4f}, Test Recall: {test_recall:.4f}')
+
+EDGE_FILE, NODE_FILE = remap_node_ids(EDGE_FILE, NODE_FILE, UPDATED_EDGE_FILE, UPDATED_NODE_FILE)
+gnn_classification(EDGE_FILE, NODE_FILE)
+# ann_classification(df)
+# logistic_regression_classification(df)
+# random_forest_classification(df)
+# svm_classification(df)
+# xgboost_classification(df)
